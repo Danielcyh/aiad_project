@@ -6,6 +6,7 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY api_gateway/ .
 
-CMD ["python", "app.py"]
+CMD ["python", "api.py"]
+
