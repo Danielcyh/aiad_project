@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            color: #999;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        .file-upload-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Transaction Analysis</h2>
+    
+    <!-- MANUAL INPUT FORM -->
+    <form id="transactionForm">
+        <div class="form-group">
+            <label for="amount">Transaction Amount ($)</label>
+            <input type="number" id="amount" step="0.01" placeholder="e.g. 150.50" required>
+        </div>
+
+        <div class="form-group">
+            <label for="transaction_hour">Time of Day (0-23 Hour)</label>
+            <input type="number" id="transaction_hour" min="0" max="23" placeholder="e.g. 14" required>
+        </div>
+
+        <div class="form-group">
+            <label for="merchant_category">Merchant Category</label>
+            <select id="merchant_category" required>
+                <option value="grocery">Grocery</option>
+                <option value="food">Food/Dining</option>
+                <option value="electronics">Electronics</option>
+                <option value="clothing">Clothing</option>
+                <option value="travel">Travel</option>
+                <option value="other">Other / Unknown</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="cardholder_age">Cardholder Age</label>
+            <input type="number" id="cardholder_age" placeholder="e.g. 35" required>
+        </div>
+
+        <div class="form-group">
+            <label for="foreign_transaction">Foreign Transaction?</label>
+            <select id="foreign_transaction">
+                <option value="0">No (Local)</option>
+                <option value="1">Yes (Foreign)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="location_mismatch">Billing & IP Location Mismatch?</label>
+            <select id="location_mismatch">
+                <option value="0">No (Locations Match)</option>
+                <option value="1">Yes (Mismatch Detected)</option>
+            </select>
+        </div>
+
+        <button type="submit" id="manualBtn">Analyze Single Transaction</button>
+    </form>
+
+    <div class="divider">--- OR ---</div>
+
+    <!-- CSV UPLOAD FORM -->
+    <form id="csvForm">
+        <div class="file-upload-container">
+            <label for="csv_file">Upload CSV for Bulk Analysis</label>
+            <input type="file" id="csv_file" accept=".csv" required>
+            <button type="submit" id="csvBtn" style="background-color: #28a745;">Upload & Analyze CSV</button>
+        </div>
+    </form>
+    
+    <!-- NOTIFICATION BOX -->
+    <div id="resultBox" style="display: none; margin-top: 20px; padding: 15px; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+</div>
+
+<script>
+    function showResult(message, isError = false) {
+        const resultBox = document.getElementById('resultBox');
+        resultBox.style.display = "block";
+        resultBox.innerText = message;
+        
+        if (isError) {
+            resultBox.style.backgroundColor = "#f8d7da"; 
+            resultBox.style.color = "#721c24";           
+        } else {
+            resultBox.style.backgroundColor = "#d4edda"; 
+            resultBox.style.color = "#155724";           
+        }
+    }
+
+    // 1. MANUAL FORM SUBMISSION
+    document.getElementById('transactionForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const payload = {
+            amount: document.getElementById('amount').value,
+            transaction_hour: document.getElementById('transaction_hour').value,
+            merchant_category: document.getElementById('merchant_category').value,
+            cardholder_age: document.getElementById('cardholder_age').value,
+            foreign_transaction: document.getElementById('foreign_transaction').value,
+            location_mismatch: document.getElementById('location_mismatch').value
+        };
+
+        const btn = document.getElementById('manualBtn');
+        btn.innerText = "Processing...";
+        document.getElementById('resultBox').style.display = "none";
+
+        fetch('http://127.0.0.1:5000/submit-transaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || "Backend pipeline failed."); 
+            }
+            return data;
+        })
+        .then(data => {
+            showResult("Success! The transaction was sent to the preprocessing microservice.");
+            btn.innerText = "Analyze Single Transaction";
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            showResult(`Error: ${error.message}`, true);
+            btn.innerText = "Analyze Single Transaction";
+        });
+        // --- HANDLE CSV UPLOAD SUBMISSION ---
+        fetch('http://127.0.0.1:5000/upload-csv', {
+            method: 'POST',
+            body: formData
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || "Backend pipeline failed.");
+            }
+            return data;
+        })
+        .then(data => {
+            showResult(`Success! "${file.name}" was uploaded and sent for processing.`);
+            btn.innerText = "Upload & Analyze CSV";
+            fileInput.value = ""; 
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            showResult(`Error: ${error.message}`, true);
+            btn.innerText = "Upload & Analyze CSV";
+        });
+    });
+
+    // 2. CSV UPLOAD SUBMISSION
+    document.getElementById('csvForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const fileInput = document.getElementById('csv_file');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showResult("Please select a CSV file first.", true);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const btn = document.getElementById('csvBtn');
+        btn.innerText = "Uploading...";
+        document.getElementById('resultBox').style.display = "none";
+
+        fetch('http://127.0.0.1:5000/upload-csv', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            showResult(`Success! "${file.name}" was uploaded and sent for processing.`);
+            btn.innerText = "Upload & Analyze CSV";
+            fileInput.value = ""; 
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            showResult("Error uploading CSV to Gateway.", true);
+            btn.innerText = "Upload & Analyze CSV";
+        });
+    });
+</script>
+</body>
+</html>
