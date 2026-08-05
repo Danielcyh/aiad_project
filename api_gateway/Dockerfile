@@ -8,5 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api_gateway/ .
 
+EXPOSE 5000
+
 CMD ["python", "api.py"]
 
