@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  gateway:
+    build: 
+      context: .
+      dockerfile: api_gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    depends_on:
+      - preprocessor-service
+
+  preprocessor-service:
+    build: 
+      context: .
+      dockerfile: model_cleaning/Dockerfile
+    ports:
+      - "5001:5001"
