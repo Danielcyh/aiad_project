@@ -6,6 +6,8 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY model_cleaning .
 
-CMD ["python", "app.py"]
+EXPOSE 5001
+
+CMD ["python", "cleaning.py"]
