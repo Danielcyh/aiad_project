@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fraud Detection Simulator</title>
+    <title>Fraud Detection AI</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -79,9 +79,8 @@
 <body>
 
 <div class="card">
-    <h2>Transaction Analysis</h2>
+    <h2>Transaction AI Analysis</h2>
     
-    <!-- MANUAL INPUT FORM -->
     <form id="transactionForm">
         <div class="form-group">
             <label for="amount">Transaction Amount ($)</label>
@@ -96,12 +95,12 @@
         <div class="form-group">
             <label for="merchant_category">Merchant Category</label>
             <select id="merchant_category" required>
-                <option value="grocery">Grocery</option>
-                <option value="food">Food/Dining</option>
-                <option value="electronics">Electronics</option>
-                <option value="clothing">Clothing</option>
-                <option value="travel">Travel</option>
-                <option value="other">Other / Unknown</option>
+                <option value="Grocery">Grocery</option>
+                <option value="Food">Food/Dining</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Travel">Travel</option>
+                <option value="Other">Other / Unknown</option>
             </select>
         </div>
 
@@ -126,12 +125,11 @@
             </select>
         </div>
 
-        <button type="submit" id="manualBtn">Analyze Single Transaction</button>
+        <button type="submit" id="manualBtn">Predict Fraud Status</button>
     </form>
 
     <div class="divider">--- OR ---</div>
 
-    <!-- CSV UPLOAD FORM -->
     <form id="csvForm">
         <div class="file-upload-container">
             <label for="csv_file">Upload CSV for Bulk Analysis</label>
@@ -140,8 +138,7 @@
         </div>
     </form>
     
-    <!-- NOTIFICATION BOX -->
-    <div id="resultBox" style="display: none; margin-top: 20px; padding: 15px; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+    <div id="resultBox" style="display: none; margin-top: 20px; padding: 15px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 16px;"></div>
 </div>
 
 <script>
@@ -151,32 +148,43 @@
         resultBox.innerText = message;
         
         if (isError) {
+            // RED box for Errors or Fraud
             resultBox.style.backgroundColor = "#f8d7da"; 
-            resultBox.style.color = "#721c24";           
+            resultBox.style.color = "#721c24"; 
+            resultBox.style.border = "1px solid #f5c6cb";
         } else {
+            // GREEN box for Safe
             resultBox.style.backgroundColor = "#d4edda"; 
             resultBox.style.color = "#155724";           
+            resultBox.style.border = "1px solid #c3e6cb";
         }
     }
 
-    // 1. MANUAL FORM SUBMISSION
+    // 1. MANUAL FORM SUBMISSION (Connects to AI Model)
     document.getElementById('transactionForm').addEventListener('submit', function(event) {
         event.preventDefault();
 
+        // Package the data exactly how your Flask Pandas DataFrame expects it
         const payload = {
-            amount: document.getElementById('amount').value,
-            transaction_hour: document.getElementById('transaction_hour').value,
-            merchant_category: document.getElementById('merchant_category').value,
-            cardholder_age: document.getElementById('cardholder_age').value,
-            foreign_transaction: document.getElementById('foreign_transaction').value,
-            location_mismatch: document.getElementById('location_mismatch').value
+            "amount": parseFloat(document.getElementById('amount').value),
+            "transaction_hour": parseInt(document.getElementById('transaction_hour').value),
+            
+            // Hardcoded defaults so the AI model doesn't crash from missing features
+            "device_trust_score": 80,
+            "velocity_last_24h": 1,
+            
+            "cardholder_age": parseInt(document.getElementById('cardholder_age').value),
+            "merchant_category": document.getElementById('merchant_category').value,
+            "foreign_transaction": parseInt(document.getElementById('foreign_transaction').value),
+            "location_mismatch": parseInt(document.getElementById('location_mismatch').value)
         };
 
         const btn = document.getElementById('manualBtn');
-        btn.innerText = "Processing...";
+        btn.innerText = "Running AI Model...";
         document.getElementById('resultBox').style.display = "none";
 
-        fetch('http://127.0.0.1:5000/submit-transaction', {
+        // Call the AI Gateway
+        fetch('http://127.0.0.1:5000/predict', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -184,40 +192,23 @@
         .then(async response => {
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error || "Backend pipeline failed."); 
+                throw new Error(data.message || "Backend pipeline failed."); 
             }
             return data;
         })
         .then(data => {
-            showResult("Success! The transaction was sent to the preprocessing microservice.");
-            btn.innerText = "Analyze Single Transaction";
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            showResult(`Error: ${error.message}`, true);
-            btn.innerText = "Analyze Single Transaction";
-        });
-        // --- HANDLE CSV UPLOAD SUBMISSION ---
-        fetch('http://127.0.0.1:5000/upload-csv', {
-            method: 'POST',
-            body: formData
-        })
-        .then(async response => {
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || "Backend pipeline failed.");
+            // Show AI Prediction
+            if (data.is_fraud === 1) {
+                showResult("🚨 ALERT: " + data.message, true); // Show as Red
+            } else {
+                showResult("✅ SAFE: " + data.message, false); // Show as Green
             }
-            return data;
-        })
-        .then(data => {
-            showResult(`Success! "${file.name}" was uploaded and sent for processing.`);
-            btn.innerText = "Upload & Analyze CSV";
-            fileInput.value = ""; 
+            btn.innerText = "Predict Fraud Status";
         })
         .catch(error => {
             console.error("Error:", error);
-            showResult(`Error: ${error.message}`, true);
-            btn.innerText = "Upload & Analyze CSV";
+            showResult(`Error connecting to API: ${error.message}`, true);
+            btn.innerText = "Predict Fraud Status";
         });
     });
 
