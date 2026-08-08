@@ -7,8 +7,6 @@ services:
       dockerfile: api_gateway/Dockerfile
     ports:
       - "5000:5000"
-    depends_on:
-      - preprocessor-service
 
   preprocessor-service:
     build: 
@@ -16,3 +14,10 @@ services:
       dockerfile: model_cleaning/Dockerfile
     ports:
       - "5001:5001"
+
+  prediction-service:
+    build: 
+      context: .
+      dockerfile: model_training/Dockerfile
+    ports:
+      - "5002:5002"
