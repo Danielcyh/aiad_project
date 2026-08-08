@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 def process_transaction(raw_data: dict) -> dict:
     """
-    Standardizes keys, handles missing data, clamps outliers, and encodes text.
+    Standardizes keys, handles missing data, clamps outliers, and passes clean strings for OneHotEncoding.
     """
     # Key Standardization
     key_aliases = {
@@ -14,7 +14,9 @@ def process_transaction(raw_data: dict) -> dict:
         'merchant_category': ['merchant_category', 'category', 'store_type'],
         'foreign_transaction': ['foreign_transaction', 'is_foreign'],
         'location_mismatch': ['location_mismatch', 'mismatch'],
-        'cardholder_age': ['cardholder_age', 'age']
+        'cardholder_age': ['cardholder_age', 'age'],
+        'device_trust_score': ['device_trust_score', 'trust_score'],
+        'velocity_last_24h': ['velocity_last_24h', 'velocity']
     }
     
     standardized_data = {}
@@ -34,21 +36,23 @@ def process_transaction(raw_data: dict) -> dict:
         except (ValueError, TypeError):
             return 30
 
-    # Categorical Encoding for Merchant
-    raw_category = str(standardized_data.get('merchant_category', 'other')).strip().lower()
-    category_mapping = {
-        'electronics': 0, 'travel': 1, 'grocery': 2, 'food': 3, 'clothing': 4
-    }
-    encoded_category = category_mapping.get(raw_category, 99)
+    # Categorical Formatting for Merchant 
+    # (Must remain a string so the .joblib model's OneHotEncoder can process it!)
+    raw_category = str(standardized_data.get('merchant_category', 'Other')).strip().capitalize()
+    valid_categories = ['Grocery', 'Food', 'Electronics', 'Clothing', 'Travel', 'Other']
+    if raw_category not in valid_categories:
+        raw_category = 'Other'
 
-    # Final Type Enforcement & Default Fallbacks
+    # Final Type Enforcement & Default Fallbacks (Includes all 8 features the model expects)
     clean_payload = {
-        'amount': round(float(standardized_data.get('amount', 0.0)),2),
+        'amount': round(float(standardized_data.get('amount', 0.0)), 2),
         'transaction_hour': int(standardized_data.get('transaction_hour', 12)),
-        'merchant_category': encoded_category,
+        'device_trust_score': int(standardized_data.get('device_trust_score', 80)),
+        'velocity_last_24h': int(standardized_data.get('velocity_last_24h', 1)),
+        'cardholder_age': get_valid_age(standardized_data.get('cardholder_age')),
+        'merchant_category': raw_category,
         'foreign_transaction': int(standardized_data.get('foreign_transaction', 0)),
-        'location_mismatch': int(standardized_data.get('location_mismatch', 0)),
-        'cardholder_age': get_valid_age(standardized_data.get('cardholder_age'))
+        'location_mismatch': int(standardized_data.get('location_mismatch', 0))
     }
     
     return clean_payload
@@ -75,7 +79,7 @@ def process_csv():
         # 2. Convert the dataframe into a list of dictionaries (rows)
         raw_records = df.to_dict(orient='records')
         
-        # 3. Pass every row through your exact same cleaning function!
+        # 3. Pass every row through your cleaning function
         cleaned_records = [process_transaction(row) for row in raw_records]
         
         return jsonify({
