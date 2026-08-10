@@ -7,6 +7,10 @@ services:
       dockerfile: api_gateway/Dockerfile
     ports:
       - "5000:5000"
+    depends_on:
+      - preprocessor-service
+      - prediction-service
+      - logging-service
 
   preprocessor-service:
     build: 
@@ -21,3 +25,12 @@ services:
       dockerfile: model_training/Dockerfile
     ports:
       - "5002:5002"
+
+  logging-service:
+     build: 
+       context: .
+       dockerfile: logging_service/Dockerfile  
+     ports:
+       - "5003:5003"
+     volumes:
+       - .:/app
