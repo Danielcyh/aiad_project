@@ -13,54 +13,76 @@ CSV_AUDIT_FILE = "deployment_audit_trail.csv"
 SGT_OFFSET = timezone(timedelta(hours=8))
 
 
-def append_audit_log(cleaned_data: dict, prediction_result: dict) -> None:
-  try:
-    row_data = list(cleaned_data.values())
-    prediction_val = prediction_result.get(
-        "is_fraud", prediction_result.get("prediction", "N/A")
-    )
-
-    # Force the timestamp to use Singapore Time (SGT)
-    timestamp = datetime.now(SGT_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
-
-    full_row = row_data + [prediction_val, timestamp]
-
-    file_exists = os.path.exists(CSV_AUDIT_FILE)
-
-    with open(CSV_AUDIT_FILE, mode="a", newline="", encoding="utf-8") as file:
-      writer = csv.writer(file)
-      if not file_exists:
-        headers = list(cleaned_data.keys()) + ["prediction", "timestamp"]
-        writer.writerow(headers)
-      writer.writerow(full_row)
-  except Exception as e:
-    print(f"Error writing to audit log: {str(e)}")
-    raise e
+def write_rows_to_csv(headers: list, rows: list):
+  file_exists = os.path.exists(CSV_AUDIT_FILE)
+  with open(CSV_AUDIT_FILE, mode="a", newline="", encoding="utf-8") as file:
+    writer = csv.writer(file)
+    if not file_exists:
+      writer.writerow(headers)
+    writer.writerows(rows)
 
 
 @app.route("/log", methods=["POST"])
 def log_transaction():
   try:
     payload = request.get_json()
-    if (
-        not payload
-        or "cleaned_data" not in payload
-        or "prediction_result" not in payload
-    ):
+    if not payload:
       return jsonify({"error": "Invalid payload format."}), 400
 
-    cleaned_data = payload["cleaned_data"]
-    prediction_result = payload["prediction_result"]
-    append_audit_log(cleaned_data, prediction_result)
+    timestamp = datetime.now(SGT_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
+
+    #  Batch CSV Processing Log
+    if "records" in payload:
+      records = payload["records"]
+      if not records:
+        return jsonify({"status": "success", "message": "Empty batch log."}), 200
+
+      rows_to_write = []
+      headers = None
+
+      for record in records:
+        rec_copy = dict(record)
+        # Extract prediction output
+        pred_val = rec_copy.pop("is_fraud", rec_copy.pop("prediction", "N/A"))
+        rec_copy.pop(
+            "prediction_message", None
+        )  # remove UI status message if present
+
+        if headers is None:
+          headers = list(rec_copy.keys()) + ["prediction", "timestamp"]
+
+        row_data = list(rec_copy.values()) + [pred_val, timestamp]
+        rows_to_write.append(row_data)
+
+      if headers and rows_to_write:
+        write_rows_to_csv(headers, rows_to_write)
+
+    # Single Manual Form Log
+    elif "cleaned_data" in payload and "prediction_result" in payload:
+      cleaned_data = payload["cleaned_data"]
+      prediction_result = payload["prediction_result"]
+
+      pred_val = prediction_result.get(
+          "is_fraud", prediction_result.get("prediction", "N/A")
+      )
+      headers = list(cleaned_data.keys()) + ["prediction", "timestamp"]
+      row_data = list(cleaned_data.values()) + [pred_val, timestamp]
+
+      write_rows_to_csv(headers, [row_data])
+
+    else:
+      return jsonify({"error": "Unrecognized logging payload structure."}), 400
 
     return (
         jsonify({
             "status": "success",
-            "message": "Audit log recorded successfully.",
+            "message": "Audit log(s) recorded successfully.",
         }),
         200,
     )
+
   except Exception as e:
+    print(f"Error writing to audit log: {str(e)}")
     return jsonify({"status": "error", "message": str(e)}), 500
 
 
