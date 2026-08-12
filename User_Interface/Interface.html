@@ -74,6 +74,52 @@
             border-radius: 8px;
             border: 1px dashed #ccc;
         }
+
+        /* --- ADD-ON STYLES FOR CSV PREDICTION RESULTS --- */
+        #csvResultContainer {
+            margin-top: 20px;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px;
+            background-color: #fff;
+        }
+
+        .result-table th, .result-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px 10px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .result-table th {
+            background-color: #f8f9fa;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .badge-fraud {
+            background-color: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .badge-safe {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +185,9 @@
     </form>
     
     <div id="resultBox" style="display: none; margin-top: 20px; padding: 15px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 16px;"></div>
+
+    <div id="csvResultContainer" class="table-container" style="display: none;"></div>
+
 </div>
 
 <script>
@@ -148,31 +197,25 @@
         resultBox.innerText = message;
         
         if (isError) {
-            // RED box for Errors or Fraud
             resultBox.style.backgroundColor = "#f8d7da"; 
             resultBox.style.color = "#721c24"; 
             resultBox.style.border = "1px solid #f5c6cb";
         } else {
-            // GREEN box for Safe
             resultBox.style.backgroundColor = "#d4edda"; 
-            resultBox.style.color = "#155724";           
+            resultBox.style.color = "#155724";          
             resultBox.style.border = "1px solid #c3e6cb";
         }
     }
 
-    // 1. MANUAL FORM SUBMISSION (Connects to AI Model)
+    // 1. MANUAL FORM SUBMISSION
     document.getElementById('transactionForm').addEventListener('submit', function(event) {
         event.preventDefault();
 
-        // Package the data exactly how your Flask Pandas DataFrame expects it
         const payload = {
             "amount": parseFloat(document.getElementById('amount').value),
             "transaction_hour": parseInt(document.getElementById('transaction_hour').value),
-            
-            // Hardcoded defaults so the AI model doesn't crash from missing features
             "device_trust_score": 80,
             "velocity_last_24h": 1,
-            
             "cardholder_age": parseInt(document.getElementById('cardholder_age').value),
             "merchant_category": document.getElementById('merchant_category').value,
             "foreign_transaction": parseInt(document.getElementById('foreign_transaction').value),
@@ -183,7 +226,6 @@
         btn.innerText = "Running AI Model...";
         document.getElementById('resultBox').style.display = "none";
 
-        // Call the AI Gateway
         fetch('http://127.0.0.1:5000/predict', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -197,11 +239,10 @@
             return data;
         })
         .then(data => {
-            // Show AI Prediction
             if (data.is_fraud === 1) {
-                showResult("🚨 ALERT: " + data.message, true); // Show as Red
+                showResult("🚨 ALERT: " + data.message, true);
             } else {
-                showResult("✅ SAFE: " + data.message, false); // Show as Green
+                showResult("✅ SAFE: " + data.message, false);
             }
             btn.innerText = "Predict Fraud Status";
         })
@@ -213,37 +254,77 @@
     });
 
     // 2. CSV UPLOAD SUBMISSION
-    document.getElementById('csvForm').addEventListener('submit', function(event) {
-        event.preventDefault();
+    document.getElementById('csvForm').addEventListener('submit', function(e) {
+        e.preventDefault();
         
         const fileInput = document.getElementById('csv_file');
-        const file = fileInput.files[0];
+        const btn = document.getElementById('csvBtn');
+        const csvContainer = document.getElementById('csvResultContainer');
 
-        if (!file) {
-            showResult("Please select a CSV file first.", true);
+        if (!fileInput.files[0]) {
+            alert("Please select a CSV file first.");
             return;
         }
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileInput.files[0]);
 
-        const btn = document.getElementById('csvBtn');
-        btn.innerText = "Uploading...";
-        document.getElementById('resultBox').style.display = "none";
+        btn.innerText = "Processing...";
+        csvContainer.innerHTML = "";
+        csvContainer.style.display = "none";
 
-        fetch('http://127.0.0.1:5000/upload-csv', {
+        fetch('http://localhost:5000/upload-csv', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
-            showResult(`Success! "${file.name}" was uploaded and sent for processing.`);
             btn.innerText = "Upload & Analyze CSV";
-            fileInput.value = ""; 
+
+            if (data.status === "error" || data.error) {
+                csvContainer.style.display = "block";
+                csvContainer.innerHTML = `<p style="color: red;">Error: ${data.message || data.error}</p>`;
+                return;
+            }
+
+            if (!data.results || data.results.length === 0) {
+                csvContainer.style.display = "block";
+                csvContainer.innerHTML = "<p>No prediction results returned.</p>";
+                return;
+            }
+
+            // Build dynamic HTML table for batch results
+            let tableHTML = `<table class="result-table"><thead><tr>`;
+            
+            const columns = Object.keys(data.results[0]);
+            columns.forEach(col => {
+                tableHTML += `<th>${col}</th>`;
+            });
+            tableHTML += `</tr></thead><tbody>`;
+
+            data.results.forEach(row => {
+                tableHTML += `<tr>`;
+                columns.forEach(col => {
+                    if (col === 'is_fraud') {
+                        let badgeClass = row[col] === 1 ? 'badge-fraud' : 'badge-safe';
+                        let badgeText = row[col] === 1 ? '1 (Fraud)' : '0 (Safe)';
+                        tableHTML += `<td><span class="${badgeClass}">${badgeText}</span></td>`;
+                    } else {
+                        tableHTML += `<td>${row[col] !== undefined ? row[col] : ''}</td>`;
+                    }
+                });
+                tableHTML += `</tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+        
+            csvContainer.innerHTML = tableHTML;
+            csvContainer.style.display = "block";
         })
         .catch(error => {
             console.error("Error:", error);
-            showResult("Error uploading CSV to Gateway.", true);
+            csvContainer.style.display = "block";
+            csvContainer.innerHTML = `<p style="color: red;">Error uploading CSV: ${error.message}</p>`;
             btn.innerText = "Upload & Analyze CSV";
         });
     });
