@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -9,6 +9,9 @@ CORS(app)
 
 CSV_AUDIT_FILE = "deployment_audit_trail.csv"
 
+# Define Singapore Time (SGT is UTC+8)
+SGT_OFFSET = timezone(timedelta(hours=8))
+
 
 def append_audit_log(cleaned_data: dict, prediction_result: dict) -> None:
   try:
@@ -16,7 +19,10 @@ def append_audit_log(cleaned_data: dict, prediction_result: dict) -> None:
     prediction_val = prediction_result.get(
         "is_fraud", prediction_result.get("prediction", "N/A")
     )
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Force the timestamp to use Singapore Time (SGT)
+    timestamp = datetime.now(SGT_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
+
     full_row = row_data + [prediction_val, timestamp]
 
     file_exists = os.path.exists(CSV_AUDIT_FILE)
