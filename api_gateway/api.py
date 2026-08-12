@@ -83,10 +83,20 @@ def upload_csv():
       return jsonify({"error": "Failed at AI batch prediction stage"}), 500
 
     ai_result = ai_response.json()
+    batch_results = ai_result.get("results", [])
+
+    # Forward batch records to the logging service
+    try:
+      logging_payload = {"records": batch_results}
+      requests.post(LOGGING_URL, json=logging_payload, timeout=5)
+    except Exception as log_err:
+      print(f"Warning: Logging service unreachable for batch: {log_err}")
+
     return jsonify(ai_result), 200
 
   except Exception as e:
     return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
   app.run(host="0.0.0.0", port=5000)
