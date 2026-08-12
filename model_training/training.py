@@ -6,26 +6,17 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
-# Load your trained AI model when the server starts
+# Load your trained AI model pipeline
 model = joblib.load('fraud_prediction_model.joblib')
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # 1. Get the raw JSON data sent by the user/UI
         raw_data = request.json
-        
-        # 2. Convert the JSON into a Pandas DataFrame
-        # (We wrap it in a list so Pandas knows it's a single row of data)
         df = pd.DataFrame([raw_data])
         
-        # 3. Make the prediction! 
-        # Because we saved a Pipeline, this automatically scales the numbers, 
-        # encodes the text, and runs the Logistic Regression model.
         prediction = model.predict(df)
         
-        # 4. Format the result and send it back to the user
-        # prediction[0] will be 1 (Fraud) or 0 (Not Fraud)
         result = {
             "status": "success",
             "is_fraud": int(prediction[0]),
@@ -35,8 +26,39 @@ def predict():
         return jsonify(result), 200
         
     except Exception as e:
-        # If the user sends bad data, return an error safely
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+@app.route('/predict-batch', methods=['POST'])
+def predict_batch():
+    try:
+        data = request.get_json()
+        records = data.get('records', [])
+        
+        if not records:
+            return jsonify({"status": "error", "message": "No records provided"}), 400
+            
+        # Convert list of cleaned dictionaries into a Pandas DataFrame
+        df = pd.DataFrame(records)
+        
+        # Run batch predictions through the model pipeline
+        predictions = model.predict(df)
+        
+        # Attach predictions and messages back to each record row
+        df['is_fraud'] = [int(p) for p in predictions]
+        df['prediction_message'] = df['is_fraud'].apply(
+            lambda x: "Fraudulent Transaction Detected" if x == 1 else "Transaction Approved"
+        )
+        
+        # Convert back to a list of dictionaries
+        results = df.to_dict(orient='records')
+        
+        return jsonify({
+            "status": "success",
+            "results": results
+        }), 200
+        
+    except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5002)
+    app.run(host='0.0.0.0', port=5002)
