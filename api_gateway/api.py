@@ -8,6 +8,7 @@ CORS(app)
 PREPROCESSOR_URL = "http://preprocessor-service:5001/clean"
 PREPROCESSOR_CSV_URL = "http://preprocessor-service:5001/process-csv"
 PREDICTION_URL = "http://prediction-service:5002/predict"
+PREDICTION_CSV_URL = "http://prediction-service:5002/predict-batch"
 LOGGING_URL = "http://logging-service:5003/log"
 
 
@@ -54,7 +55,6 @@ def overall_api():
   except Exception as e:
     return jsonify({"error": str(e)}), 500
 
-
 @app.route("/upload-csv", methods=["POST"])
 def upload_csv():
   if "file" not in request.files:
@@ -64,11 +64,29 @@ def upload_csv():
 
   try:
     files = {"file": (file.filename, file.stream, file.content_type)}
-    response = requests.post(PREPROCESSOR_CSV_URL, files=files)
-    return jsonify(response.json()), response.status_code
+    prep_response = requests.post(PREPROCESSOR_CSV_URL, files=files)
+
+    if prep_response.status_code != 200:
+      return jsonify({"error": "Failed at CSV preprocessing stage"}), 500
+
+    prep_json = prep_response.json()
+    cleaned_records = prep_json.get("cleaned_data", [])
+
+    if not cleaned_records:
+      return jsonify({"error": "No records found in cleaned CSV data"}), 400
+
+    ai_response = requests.post(
+        PREDICTION_CSV_URL, json={"records": cleaned_records}
+    )
+
+    if ai_response.status_code != 200:
+      return jsonify({"error": "Failed at AI batch prediction stage"}), 500
+
+    ai_result = ai_response.json()
+    return jsonify(ai_result), 200
+
   except Exception as e:
     return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
   app.run(host="0.0.0.0", port=5000)
