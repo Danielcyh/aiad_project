@@ -344,6 +344,9 @@
             
             let columns = Object.keys(data.results[0]);
             
+            const columnsToHide = ['device_trust_score', 'velocity_last_24h'];
+            columns = columns.filter(col => !columnsToHide.includes(col));
+            
             if (columns.includes('is_fraud')) {
                 columns = columns.filter(col => col !== 'is_fraud');
                 columns.unshift('is_fraud');
