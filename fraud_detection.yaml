@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
       - name: preprocessor
-        image: aiad-preprocessor-service:latest
-        imagePullPolicy: Never # Use 'Never' if testing locally with Minikube
+        image: aiad_project-preprocessor-service:latest
+        imagePullPolicy: Never 
         ports:
         - containerPort: 5001
 ---
@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
       - name: prediction
-        image: aiad-prediction-service:latest
+        image: aiad_project-prediction-service:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 5002
@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - name: logging
-        image: aiad-logging-service:latest
+        image: aiad_project-logging-service:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 5003
@@ -110,7 +110,7 @@ spec:
     spec:
       containers:
       - name: gateway
-        image: aiad-gateway:latest
+        image: aiad_project-gateway:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 5000
