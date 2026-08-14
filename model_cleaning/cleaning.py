@@ -73,13 +73,17 @@ def process_csv():
     file = request.files['file']
     
     try:
-        # 1. Read the CSV file using Pandas
         df = pd.read_csv(file)
         
-        # 2. Convert the dataframe into a list of dictionaries (rows)
+        # Replace all Null values with 0
+        df = df.fillna(0)
+        
+        # Replace blank strings with 0
+        df = df.replace(r'^\s*$', 0, regex=True)
+        
+        # Convert the dataframe into a list of dictionaries (rows)
         raw_records = df.to_dict(orient='records')
         
-        # 3. Pass every row through your cleaning function
         cleaned_records = [process_transaction(row) for row in raw_records]
         
         return jsonify({
