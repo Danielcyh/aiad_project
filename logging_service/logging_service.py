@@ -7,9 +7,13 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-CSV_AUDIT_FILE = "deployment_audit_trail.csv"
 
-# Define Singapore Time (SGT is UTC+8)
+LOG_DIR = "/app/data"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+CSV_AUDIT_FILE = os.path.join(LOG_DIR, "deployment_audit_trail.csv")
+
+
 SGT_OFFSET = timezone(timedelta(hours=8))
 
 
