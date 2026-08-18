@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import requests
 
@@ -96,7 +96,23 @@ def upload_csv():
 
   except Exception as e:
     return jsonify({"error": str(e)}), 500
-
+    
+@app.route("/download-csv", methods=["GET"])
+def download_csv_gateway():
+    try:
+        # Ask the logging service for the file
+        response = requests.get("http://logging-service:5003/download", timeout=5)
+        
+        # Pass the file directly to the user's browser
+        return Response(
+            response.content,
+            headers={
+                "Content-Disposition": "attachment; filename=deployment_audit_trail.csv",
+                "Content-Type": "text/csv"
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": f"Failed to download logs: {str(e)}"}), 500
 
 if __name__ == "__main__":
   app.run(host="0.0.0.0", port=5000)
