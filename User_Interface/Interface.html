@@ -159,6 +159,7 @@
     <div class="nav-tabs">
         <button id="btn-single" class="tab-btn active" onclick="switchTab('single')">Single Transaction</button>
         <button id="btn-csv" class="tab-btn" onclick="switchTab('csv')">Batch CSV Upload</button>
+        <button id="btn-logs" class="tab-btn" onclick="switchTab('logs')">Audit Logs</button>
     </div>
 
     <!-- SECTION 1: SINGLE TRANSACTION -->
@@ -219,7 +220,18 @@
         </form>
         <div id="csvResultContainer" style="display: none;"></div>
     </div>
-
+    <!-- SECTION 3: AUDIT LOGS -->
+    <div id="section-logs" class="tab-content">
+        <h2>Audit Trail & Logs</h2>
+        <p style="text-align: center; color: #555; margin-bottom: 25px;">Download the complete history of processed transactions and predictions.</p>
+        
+        <div style="text-align: center;">
+            <a href="http://localhost:5000/download-csv" 
+               style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              📥 Download Audit Trail (CSV)
+            </a>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -228,11 +240,11 @@
         // Hide both sections
         document.getElementById('section-single').classList.remove('active');
         document.getElementById('section-csv').classList.remove('active');
-        
+        document.getElementById('section-logs').classList.remove('active');
         // Deactivate both buttons
         document.getElementById('btn-single').classList.remove('active');
         document.getElementById('btn-csv').classList.remove('active');
-        
+        document.getElementById('btn-logs').classList.remove('active');
         // Show the selected section and activate its button
         document.getElementById('section-' + tabName).classList.add('active');
         document.getElementById('btn-' + tabName).classList.add('active');
