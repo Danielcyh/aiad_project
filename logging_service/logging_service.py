@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime, timedelta, timezone
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -26,7 +26,7 @@ def write_rows_to_csv(headers: list, rows: list):
     writer.writerows(rows)
 
 
-@app.route("/log", methods=["POST"])
+@app.route("/log", methods=["POST"])  
 def log_transaction():
   try:
     payload = request.get_json()
@@ -89,6 +89,12 @@ def log_transaction():
     print(f"Error writing to audit log: {str(e)}")
     return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route("/download", methods=["GET"])
+def download_logs():
+  try:
+    return send_file(CSV_AUDIT_FILE, as_attachment=True)
+  except Exception as e:
+    return jsonify({"error": "File not found or empty."}), 404
 
 if __name__ == "__main__":
   app.run(host="0.0.0.0", port=5003)
