@@ -108,17 +108,20 @@ Open your interface.html and You can now test manual entries or upload bulk CSV 
 *Our group has decoupled the system into the following 4 services. Team members should complete the description, responsibilities, and API contract details for their respective sections:*
 
 ### 1. API Gateway (`gateway-service`)
-- **Lead Developer:** `[INSERT NAME]`
-- **Technology Stack:** `[INSERT FLOW/FRAMEWORK, e.g., Flask/FastAPI]`
+- **Lead Developer:** `Muhammad Aslam`
+- **Technology Stack:** `Python, Flask, Flask-CORS`
 - **Purpose & Description:**
-  *(Group to fill out: Describe the gateway's role as the single entry point, how it handles cross-origin resource sharing, and coordinates the sequential pipeline)*
+  The API Gateway is the single point of entry for out client applications. It uses Flask-CORS to handle Cross-Origin Resource Sharing for frontend compatibility and coordinates sequential execution pipelines across internal microservices. It decouples client requests from internal service architecture while handling error forwarding and logging dispatch.
 - **API Endpoints & Contracts:**
   - `POST /predict`
-    - **Request Payload:** `[INSERT JSON PAYLOAD SCHEMA]`
-    - **Response Payload:** `[INSERT JSON RESPONSE SCHEMA]`
+    - **Request Payload:** `Raw JSON object containing unstandardized transaction details`
+    - **Response Payload:** `JSON object containing the pipeline execution status and final fraud prediction outcome`
   - `POST /upload-csv`
-    - **Request Payload:** `[INSERT MULTIPART/FORM-DATA SCHEMA]`
-    - **Response:** `[INSERT JSON RESPONSE SCHEMA]`
+    - **Request Payload:** `Multipart/form-data containing the uploaded CSV file`
+    - **Response:** `JSON object containing batch processing status and prediction results for all records`
+  - `POST /download-csv`
+    - **Request Payload:** `None`
+    - **Response:** `Binary CSV file stream containing the complete deployment audit trail`
 
 ---
 
@@ -182,5 +185,7 @@ The system is trained and validated on a transaction dataset containing 10,000 c
 
 ---
 
-## ⚠️ Known Issues & Limitations
-
+## Known Issues & Limitations
+- **Synchronous Coupling & Cascading Failures:** Our API Gateway uses blocking HTTP requests to chain all our microservices sequentially. If there is any single downstream container crashes or times out, the entire request aborts and returns a 500 error.
+- **Lack of Security and Access Controls:** The endpoints are exposed publicly with CORS enabled and without authentication or rate limiting. Any client on the network can trigger batch predictions or download full audit trails containing transaction logs.
+- **Hardcoded UI Parameters:** The interface has hardcoded device_trust_score to 80 and velocity_last_24h to 1 during the single-transaction submissions. Users cannot evaluate transactions involving varying device safety levels or rapid transaction counts through the web interface.
