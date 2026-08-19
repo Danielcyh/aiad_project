@@ -1,4 +1,4 @@
-# Credit Card Fraud Detection System
+  # Credit Card Fraud Detection System
 
 This repository contains a containerized  **Credit Card Fraud Detection System** using **Docker Compose** and deployed on **Kubernetes (Minikube)**. The application splits machine learning processes into 4 decoupled, communicative microservices that interact sequentially over standard HTTP/REST protocols to evaluate live transactions and batch CSV uploads for potential fraud.
 
@@ -123,17 +123,17 @@ Open your interface.html and You can now test manual entries or upload bulk CSV 
 ---
 
 ### 2. Data Preprocessor (`preprocessor-service`)
-- **Lead Developer:** `[INSERT NAME]`
-- **Technology Stack:** `[INSERT FLOW/FRAMEWORK, e.g., Python/Pandas]`
+- **Lead Developer:** `Hoon Yao Hong`
+- **Technology Stack:** `Python, Pandas, Flask`
 - **Purpose & Description:**
-  *(Group to fill out: Explain how this service cleans raw transaction data, standardizes inconsistent frontend input keys, handles outlier age values, and handles categorical string mapping without breaking the downstream model)*
+  This service acts as the data cleaning station between the API Gateway and the Machine Learning model. It uses Pandas to standardize inconsistent iformatting (e.g., mapping `txn_amt` to `amount`). It handles outliers by clamping `cardholder_age` values between 18 and 100 and defaulting invalid entries to 30. Furthermore, it sanitizes categorical strings like `merchant_category` by validating against a strict list of accepted categories and defaulting unrecognized inputs to 'Other', ensuring the OneHotEncoder can process the data without any isses. At the end, it enforces strict type conversion (float/int) across all features before passing them forward.
 - **API Endpoints & Contracts:**
   - `POST /clean`
-    - **Request Payload:** `[INSERT SCHEMA]`
-    - **Response Payload:** `[INSERT SCHEMA]`
+    - **Request Payload:** `Raw JSON object containing unstandardized transaction data`
+    - **Response Payload:** `Cleaned JSON object with standardized keys, defaults applied, and enforced data types`
   - `POST /process-csv`
-    - **Request Payload:** `[INSERT SCHEMA]`
-    - **Response Payload:** `[INSERT SCHEMA]`
+    - **Request Payload:** `Contain CSV file uploaded`
+    - **Response Payload:** `JSON object containing the batch processing status, a summary message, and an array of cleaned transaction objects`
 
 ---
 
