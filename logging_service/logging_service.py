@@ -4,13 +4,16 @@ import os
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
+# Initialize Flask application and enable Cross-Origin Resource Sharing (CORS)
 app = Flask(__name__)
 CORS(app)
 
-
+#Configuration for Persistent Storage Directory
+# Maps to a Kubernetes Persistent Volume Mount to ensure logs survive container restarts
 LOG_DIR = "/app/data"
 os.makedirs(LOG_DIR, exist_ok=True)
 
+# Path to the centralized deployment audit trail file
 CSV_AUDIT_FILE = os.path.join(LOG_DIR, "deployment_audit_trail.csv")
 
 
@@ -18,21 +21,36 @@ SGT_OFFSET = timezone(timedelta(hours=8))
 
 
 def write_rows_to_csv(headers: list, rows: list):
+  """Helper utility function to safely append rows of transaction audit data
+
+  into the centralized CSV file. Creates the file and writes headers if it
+  does not yet exist.
+  """
   file_exists = os.path.exists(CSV_AUDIT_FILE)
   with open(CSV_AUDIT_FILE, mode="a", newline="", encoding="utf-8") as file:
     writer = csv.writer(file)
+    # Write header columns only on initial file creation
     if not file_exists:
       writer.writerow(headers)
+    # Append the row records in batch or individually
     writer.writerows(rows)
 
 
 @app.route("/log", methods=["POST"])  
 def log_transaction():
+  """API Endpoint: POST /log
+
+  Handles incoming audit logs from microservices.
+  Supports two different payloads:
+  1. Batch CSV Processing containing multiple transaction records.
+  2. Single Manual Input.
+  """
   try:
     payload = request.get_json()
     if not payload:
       return jsonify({"error": "Invalid payload format."}), 400
 
+    # Generate current synchronized SGT timestamp for the audit log entry
     timestamp = datetime.now(SGT_OFFSET).strftime("%Y-%m-%d %H:%M:%S")
 
     #  Batch CSV Processing Log
@@ -52,6 +70,7 @@ def log_transaction():
             "prediction_message", None
         )  # remove UI status message if present
 
+    # Define headers dynamically based on the first processed record keys plus audit fields
         if headers is None:
           headers = list(rec_copy.keys()) + ["prediction", "timestamp"]
 
@@ -66,6 +85,7 @@ def log_transaction():
       cleaned_data = payload["cleaned_data"]
       prediction_result = payload["prediction_result"]
 
+    # Extract prediction output value from prediction results dictionary
       pred_val = prediction_result.get(
           "is_fraud", prediction_result.get("prediction", "N/A")
       )
@@ -91,6 +111,12 @@ def log_transaction():
 
 @app.route("/download", methods=["GET"])
 def download_logs():
+  """API Endpoint: GET /download
+
+  Allows external clients or administrative interfaces to download
+  the complete deployment audit trail file (deployment_audit_trail.csv)
+  as a binary attachment.
+  """
   try:
     return send_file(CSV_AUDIT_FILE, as_attachment=True)
   except Exception as e:
