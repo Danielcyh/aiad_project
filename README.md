@@ -156,14 +156,10 @@ Open your interface.html and You can now test manual entries or upload bulk CSV 
 ---
 
 ### 4. Audit Logging Service (`logging-service`)
-- **Lead Developer:** `[INSERT NAME]`
-- **Technology Stack:** `[INSERT FLOW/FRAMEWORK, e.g., Flask/SQLite]`
+- **Lead Developer:** `Zaw Moon`
 - **Purpose & Description:**
-  *(Group to fill out: Explain how transactions and model predictions are saved asynchronously, how the service interacts with persistent volume mounts, and why the gateway protects transactions from database service downtime)*
-- **API Endpoints & Contracts:**
-  - `POST /log`
-    - **Request Payload:** `[INSERT SCHEMA]`
-    - **Response Payload:** `[INSERT SCHEMA]`
+  The Audit Logging Service acts as the persistent recording system for all evaluated transactions and batch processing tasks. Built with Python and Flask, it listens for incoming requests and appends transaction data, final model prediction outcomes, and synchronized timestamps directly into a centralized CSV audit file (deployment_audit_trail.csv) located in /app/data. By mounting to a Kubernetes Persistent Volume, the service ensures that all audit logs survive container restarts, crashes, or redeployments.
+
 
 ---
 
