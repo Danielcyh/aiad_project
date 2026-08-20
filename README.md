@@ -24,24 +24,24 @@ aiad_project/
 ├── requirements.txt                  
 │   
 ├── api_gateway/
-│   ├── api.py                          # 
-│   └── Dockerfile                      # 
+│   ├── api.py                          # api gateway 
+│   └── Dockerfile                       
 │   
 │
 ├── model_cleaning/
-│   ├── cleaning.py                     # 
-│   └── Dockerfile                      # 
+│   ├── cleaning.py                     # data preprocessing
+│   └── Dockerfile                       
 │                
 │
 ├── model_training/
-│   ├── training.py                     #
-│   ├── fraud_prediction_model.joblib   #
+│   ├── training.py                     # AI predition
+│   ├── fraud_prediction_model.joblib   # pre trained model
 │   └── Dockerfile
 │           
 |
 └── logger_service/
-    ├── logging_service.py              #      
-    └──  Dockerfile                     #
+    ├── logging_service.py              # logging      
+    └──  Dockerfile                     
     
 ```
 
@@ -108,55 +108,28 @@ Open your interface.html and You can now test manual entries or upload bulk CSV 
 *Our group has decoupled the system into the following 4 services. Team members should complete the description, responsibilities, and API contract details for their respective sections:*
 
 ### 1. API Gateway (`gateway-service`)
-- **Lead Developer:** `Muhammad Aslam`
-- **Technology Stack:** `Python, Flask, Flask-CORS`
+- **Name:** `Muhammad Aslam`
 - **Purpose & Description:**
   The API Gateway is the single point of entry for out client applications. It uses Flask-CORS to handle Cross-Origin Resource Sharing for frontend compatibility and coordinates sequential execution pipelines across internal microservices. It decouples client requests from internal service architecture while handling error forwarding and logging dispatch.
-- **API Endpoints & Contracts:**
-  - `POST /predict`
-    - **Request Payload:** `Raw JSON object containing unstandardized transaction details`
-    - **Response Payload:** `JSON object containing the pipeline execution status and final fraud prediction outcome`
-  - `POST /upload-csv`
-    - **Request Payload:** `Multipart/form-data containing the uploaded CSV file`
-    - **Response:** `JSON object containing batch processing status and prediction results for all records`
-  - `POST /download-csv`
-    - **Request Payload:** `None`
-    - **Response:** `Binary CSV file stream containing the complete deployment audit trail`
 
 ---
 
 ### 2. Data Preprocessor (`preprocessor-service`)
-- **Lead Developer:** `Hoon Yao Hong`
-- **Technology Stack:** `Python, Pandas, Flask`
+- **Name:** `Hoon Yao Hong`
 - **Purpose & Description:**
   This service acts as the data cleaning station between the API Gateway and the Machine Learning model. It uses Pandas to standardize inconsistent iformatting (e.g., mapping `txn_amt` to `amount`). It handles outliers by clamping `cardholder_age` values between 18 and 100 and defaulting invalid entries to 30. Furthermore, it sanitizes categorical strings like `merchant_category` by validating against a strict list of accepted categories and defaulting unrecognized inputs to 'Other', ensuring the OneHotEncoder can process the data without any isses. At the end, it enforces strict type conversion (float/int) across all features before passing them forward.
-- **API Endpoints & Contracts:**
-  - `POST /clean`
-    - **Request Payload:** `Raw JSON object containing unstandardized transaction data`
-    - **Response Payload:** `Cleaned JSON object with standardized keys, defaults applied, and enforced data types`
-  - `POST /process-csv`
-    - **Request Payload:** `Contain CSV file uploaded`
-    - **Response Payload:** `JSON object containing the batch processing status, a summary message, and an array of cleaned transaction objects`
 
 ---
 
 ### 3. AI Prediction Engine (`prediction-service`)
-- **Lead Developer:** `[INSERT NAME]`
-- **Technology Stack:** `[INSERT FLOW/FRAMEWORK, e.g., Python/Scikit-Learn/Joblib]`
+- **Name:** `Daniel`
 - **Purpose & Description:**
-  *(Group to fill out: Describe how the machine learning pipeline is loaded from a frozen serialized joblib binary, how predictions are processed in batches, and how prediction keys are attached to datasets)*
-- **API Endpoints & Contracts:**
-  - `POST /predict`
-    - **Request Payload:** `[INSERT SCHEMA]`
-    - **Response Payload:** `[INSERT SCHEMA]`
-  - `POST /predict-batch`
-    - **Request Payload:** `[INSERT SCHEMA]`
-    - **Response Payload:** `[INSERT SCHEMA]`
+  This prediction service take the preprocessed data from preprocessor, feeds into the pre trained machine learning model and returns whether a transaction is fraudulent or safe. The prediction logic split into 2 main endpoint: single prediction for manual entries and batch prediction for CSV uploads. The algorithm being used is logistic regression as logistic regression can predict probabilities that an event belong to a specific category like fraud (1) or safe (0).
 
 ---
 
 ### 4. Audit Logging Service (`logging-service`)
-- **Lead Developer:** `Zaw Moon`
+- **Name:** `Zaw Moon`
 - **Purpose & Description:**
   The Audit Logging Service acts as the persistent recording system for all evaluated transactions and batch processing tasks. Built with Python and Flask, it listens for incoming requests and appends transaction data, final model prediction outcomes, and synchronized timestamps directly into a centralized CSV audit file (deployment_audit_trail.csv) located in /app/data. By mounting to a Kubernetes Persistent Volume, the service ensures that all audit logs survive container restarts, crashes, or redeployments.
 
@@ -177,7 +150,7 @@ The system is trained and validated on a transaction dataset containing 10,000 c
   6. `location_mismatch` (binary, 0 or 1): Indicator of a discrepancy between billing address and IP location.
   7. `device_trust_score` (int, default=80): Simulated score representing terminal hardware safety.
   8. `velocity_last_24h` (int, default=1): Number of transactions initiated on the card within the last day.
-- **Target Feature:** `is_fraud` (binary, 0 = Safe, 1 = Fraudulent).
+- **Target Feature:** `is_fraud` (binary: 0 = Safe, 1 = Fraudulent).
 
 ---
 
