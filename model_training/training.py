@@ -1,14 +1,21 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import joblib
+# import neccessary library
+from flask import Flask, request, jsonify # Flask create the app, request handle the incoming data, jsonify format output into JSON
+from flask_cors import CORS # cross origin sharing allow web page to communicate with each other
+import joblib # load the model in
 import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
 
-# Load your trained AI model pipeline
+# Load trained AI model pipeline
 model = joblib.load('fraud_prediction_model.joblib')
 
+'''
+request for the data preprocess in data preprocessing for manual entries, 
+do prediction using the AI model if ok return 200 if not return 400 error message
+
+'''
+# MANUAL ENTRY 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
@@ -28,6 +35,14 @@ def predict():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
+'''
+request for the data preprocess in data preprocessing for csv upload, 
+do prediction using the AI model and after that attached the predicted value 1 or 0 back to each row 
+and uses lambda to translate 1 and 0 into messages as well as
+if if ok return 200 if not return 400 error message
+
+'''
+# BATCH CSV UPLOAD 
 @app.route('/predict-batch', methods=['POST'])
 def predict_batch():
     try:
