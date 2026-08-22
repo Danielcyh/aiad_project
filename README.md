@@ -19,7 +19,7 @@ Develop a scalable, microservices-based AI application that ingests real-time tr
 ```
 aiad_project/
 │
-├── Dcoker-Compose.yml                
+├── Docker-Compose.yml                
 ├── fraud_detection.yaml                
 ├── requirements.txt                  
 │   
@@ -39,9 +39,9 @@ aiad_project/
 │   └── Dockerfile
 │           
 |
-└── logger_service/
+└── logging_service/
     ├── logging_service.py              # logging      
-    └──  Dockerfile                     
+    └── Dockerfile                     
     
 ```
 
